@@ -1,0 +1,9 @@
+ROOM NAME: Study
+CONNECTION 1: Study
+CONNECTION 2: Conservatory
+CONNECTION 3: Ballroom
+CONNECTION 4: DinningRoom
+CONNECTION 5: Kitchen
+CONNECTION 6: Cellar
+
+ROOM TYPE: MID_ROOM
