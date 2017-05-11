@@ -1,0 +1,155 @@
+#!/bin/bash
+
+
+##############################################################################
+#Name: Brett Stephenson
+#Class: CS344 Intro to operating systems
+#Date: 10/1/2016
+#Title: Stats program
+##############################################################################
+
+#status
+EXIT_FAIL=1
+EXIT_SUCCESS=0
+
+usage () {
+    echo "$0 {-rows|-cols} [file]" 1>&2
+  }
+
+# $#, if number of targets is more than 2, then exit
+if [[ $# > 2 ]]; then
+        usage
+        exit $EXIT_FAIL
+fi
+
+# Checks if the file is readable, if not then, it exits
+# This was recommended from a student who took the class previously
+if [[ ! -z $2 && ! -r $2 ]]; then
+    echo "$0: cannot read $2" 1>&2
+      exit $EXIT_FAIL
+fi
+
+if [[ $1 =~ ^-r ]]; then
+        printf "Average\tMedian\n"
+        count=0
+        while read line 
+        do
+          #Make the lines readable by the shell and sorts it
+          sorted_line=$(echo "$line" | expand | tr ' ' '\n' | sed '/^$/d' | sort -n | tr '\n' ' ')
+          
+          #Create an array from the space deliminated line
+          line_array=($sorted_line)
+
+          #Sum the line
+          lineSum=$(echo $sorted_line | sed 's/ / + /g')
+
+          #Number of elements in the line
+          lineLength=${#line_array[@]}
+ 
+          #Finding the center index
+          centerIndex=$(expr $lineLength / 2)
+            
+          #Finding the correct numerator
+          numeratorCorrection=$(expr \( $lineLength \) / 2 )
+          median=${line_array[$centerIndex]}
+
+          #Average
+          average=$(expr \( $lineSum + $numeratorCorrection \) / $lineLength)
+
+          #prints the result     
+          printf "$average\t$median\n"
+
+          count=$((count + 1))
+    
+        done < "${2:-/dev/stdin}"
+        
+        #if it never entered the loop, then print that there is nothing in the file
+        if [[ $count == 0 ]]; then
+          echo "There is nothing in the file"
+          exit $EXIT_SUCCESS
+        fi
+
+# else if the first argument begins with -c
+elif [[ $1 =~ ^-c ]]; then
+       
+  #Create a buffer to hold the contents of the file.
+  file=""
+
+  #Read the file or stdin (same as explained for the -r branch) line by line
+  while read line 
+  do
+    #Format the file so we can do things to it
+    file+=$line
+    file+=$'\n'
+  done < "${2:-/dev/stdin}"
+
+  #Get the first line of the file with head.
+  first_line_array=($(printf "%s\n" "$file" | head -1))
+  
+  #Get the length of the first line array. Use this to determine the number
+  #of columns to cut.
+  first_line_length=${#first_line_array[@]}
+ 
+  # Declare arrays to hold calculated data.
+  averages=()
+
+  means=()
+
+  #Calculate the Averages, if the file is empty, leave it
+
+  if [[ $first_line_length == 0 ]]
+  then
+    echo "There is nothing in the file"
+    exit $EXIT_SUCCESS
+  fi
+
+  #For the first line, cut it, cut the columns, sort and find the median
+  for index in $(seq 1 $first_line_length)
+  do
+    data=$(printf "%s\n" "$file" | cut -f $index | sort -n | tr '\n' ' ')
+
+    #Put the numbers in an array
+    data_as_arr=($data)
+    
+    #Mid points for the median
+    mid_point=$(expr ${#data_as_arr[@]} / 2)
+
+    #Sum
+    data_as_sum=$(echo $data | sed 's/ / + /g')
+    numerator_correction=$(expr \( ${#data_as_arr[@]} \) / 2 )
+
+    #Average.
+    average=$(expr \( $data_as_sum + $numerator_correction \) / ${#data_as_arr[@]})
+
+    #Median.
+    mean=${data_as_arr[$mid_point]}
+
+    #Put the calculations into the arrays
+    averages+=($average)
+    means+=($mean)
+  done
+
+  # Print the data the way we like it.
+  echo Averages:
+  printf "%s\t" ${averages[@]}
+  printf "\n"
+  echo Medians:
+  printf "%s\t" ${means[@]}
+  printf "\n"
+
+#Exits failure.
+else
+        usage
+        exit $EXIT_FAIL
+fi
+
+#Cleanup if killed, this was suggested by StackOverflow to handle the file that was created
+#So that we don't have some 
+cleanup() {
+        rm -f "tmp_file_$$"
+        exit 0
+}
+
+#Also suggested to handle interuptions to the scripts
+trap cleanup TERM HUP INT
+
